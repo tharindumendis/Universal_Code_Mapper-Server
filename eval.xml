@@ -1,0 +1,10 @@
+<evaluation>
+   <qa_pair>
+      <question>Search for a symbol named 'FastMCP' in the project 'd:\DEV\mcp\Code-Mapper\ucm-mcp'. Set this path as the active project first using ucm_set_active_project, then use ucm_search_symbol. Wait, you must index the project first using ucm_index_project. What is the line number where 'FastMCP' is imported or defined in src\ucm_mcp\server.py according to the search results?</question>
+      <answer>2</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>In the active project 'd:\DEV\mcp\Code-Mapper\ucm-mcp', use ucm_search_symbol to find the symbol 'ucm_search_keywords'. What file path (relative to the project root, like src\...) is it located in?</question>
+      <answer>src\ucm_mcp\tools\search_tools.py</answer>
+   </qa_pair>
+</evaluation>
