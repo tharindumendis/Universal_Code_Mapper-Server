@@ -1,6 +1,7 @@
 import json
 from typing import Optional, List, Dict, Any, Union
-from mcp.server.fastmcp import FastMCP
+from fastapi import APIRouter
+from fastmcp import FastMCP
 from ucm_mcp.tools.project_tools import resolve_project
 from ucm_mcp.identity import get_db_id
 from ucm_mcp.db.connection import get_connection
@@ -8,8 +9,10 @@ from ucm_mcp.db.connection import get_connection
 def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
-def register_search_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
+def register_search_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
+    router = APIRouter(prefix="/search", tags=["search"])
     
+    @router.post("/")
     @mcp.tool(description="""Call when you need to search for symbols.
     Parameters:
     'query' (exact/prefix), Optional,
@@ -76,3 +79,5 @@ def register_search_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             return "\n".join(md)
             
         return rows
+
+    return router

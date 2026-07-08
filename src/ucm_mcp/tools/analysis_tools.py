@@ -1,6 +1,8 @@
+from fastapi import APIRouter
+from fastapi import FastAPI
 import json
 from typing import Optional, List, Dict, Any, Union
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 from ucm_mcp.db.connection import get_connection
 from ucm_mcp.identity import get_db_id
@@ -12,6 +14,10 @@ def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
 def register_analysis_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
+    
+    router = APIRouter(prefix="/analysis", tags=["analysis"])
+
+    @router.get("/impact-analysis")
     @mcp.tool(
         description="""Call when you need to find transitive callers/tests/routes affected by changing a symbol.
          Parameters: 
@@ -39,6 +45,7 @@ def register_analysis_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             
         return affected
         
+    @router.post("/dead-code-detection")
     @mcp.tool(
         description="""Call when you need to find unreferenced symbols (functions/methods) indicating potential dead code.
          Parameters: 
@@ -64,7 +71,8 @@ def register_analysis_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             return "\n".join(lines)
             
         return dead
-        
+
+    @router.get("/duplicate-detection") 
     @mcp.tool(description="""Call when you need to find structurally similar or identically named function pairs.
     Parameters: 'root_path'  is the root path of the project."""
     )
@@ -100,3 +108,5 @@ def register_analysis_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             return "\n".join(lines)
             
         return rows
+        
+    return router

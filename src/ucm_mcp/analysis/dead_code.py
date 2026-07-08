@@ -13,6 +13,7 @@ def find_dead_code(db_id: str, symbol_types: List[str] | None, data_dir: str | N
         FROM symbols s
         JOIN files f ON s.file_id = f.id
         WHERE s.name NOT IN (SELECT callee_name FROM calls)
+        AND s.id NOT IN (SELECT handler_symbol_id FROM routes WHERE handler_symbol_id IS NOT NULL)
     '''
     params = []
     
@@ -26,6 +27,10 @@ def find_dead_code(db_id: str, symbol_types: List[str] | None, data_dir: str | N
     
     # Ignore test functions
     sql += " AND s.name NOT LIKE 'test_%'"
+    
+    # Ignore controllers (often implicitly instantiated by frameworks)
+    sql += " AND s.name NOT LIKE '%Controller%'"
+    sql += " AND s.name NOT LIKE '%controller%'"
     
     sql += " ORDER BY f.path, s.line"
     

@@ -65,7 +65,7 @@ def index_project_impl(root_path: str, data_dir: str | None = None, force_full: 
         seen_file_ids.add(file_id)
         print(f"In loop detect language: {language}, is_changed: {is_changed},file_id: {file_id},rel_path: {rel_path}")
         
-        if (is_changed or force_full) and language in ("python", "javascript", "typescript", "java", "c_sharp"):
+        if (is_changed or force_full) and language in ("python", "javascript", "typescript", "java", "csharp"):
             full_path = root_p / rel_path
             try:
                 with open(full_path, "rb") as f:
@@ -105,7 +105,7 @@ def index_project_impl(root_path: str, data_dir: str | None = None, force_full: 
                     routes.extend(extract_angular_routes(code_bytes, file_id))
                 elif language == "java":
                     routes.extend(extract_spring_routes(code_bytes, file_id))
-                elif language == "c_sharp":
+                elif language == "csharp":
                     routes.extend(extract_dotnet_routes(code_bytes, file_id))
                     
                 if routes:

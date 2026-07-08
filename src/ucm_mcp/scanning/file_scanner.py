@@ -5,7 +5,7 @@ from typing import Iterator, Tuple
 import pathspec
 
 def get_ignore_spec(root_path: Path) -> pathspec.PathSpec:
-    patterns = [".git/", "node_modules/", "__pycache__/", "venv/", ".venv/", "*.sqlite3"]
+    patterns = [".git/", "node_modules/", "__pycache__/", "venv/", ".venv/", "*.sqlite3", "bin/", "obj/", "build/", "dist/", ".idea/", ".vscode/", "cache/", ".next/", ".vs"]
     gitignore_path = root_path / ".gitignore"
     if gitignore_path.exists():
         with open(gitignore_path, "r", encoding="utf-8") as f:

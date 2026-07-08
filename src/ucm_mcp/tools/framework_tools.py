@@ -1,6 +1,7 @@
 import json
 from typing import Optional, List, Dict, Any, Union
-from mcp.server.fastmcp import FastMCP
+from fastapi import APIRouter
+from fastmcp import FastMCP
 
 from ucm_mcp.db.connection import get_connection
 from ucm_mcp.identity import get_db_id
@@ -9,7 +10,10 @@ from ucm_mcp.tools.project_tools import resolve_project
 def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
-def register_framework_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
+def register_framework_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
+    router = APIRouter(prefix="/framework", tags=["framework"])
+    
+    @router.get("/routes")
     @mcp.tool(description="""Call when you need to find the controller/handler for a given API route. Applicable ONLY to web frameworks (e.g. Flask, Django, React, Express, etc.).
     Do NOT use for CLI or non-web applications.
     Parameters:
@@ -57,6 +61,7 @@ def register_framework_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             
         return rows
         
+    @router.get("/architecture")
     @mcp.tool(description="""Call when you need a breakdown of the project architecture (Controllers, Services, Models, etc.) based on file and symbol conventions.
     Parameters:
     'root_path' (Optional[str]): The root path of the project."""
@@ -113,3 +118,5 @@ def register_framework_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             )
             
         return res
+
+    return router

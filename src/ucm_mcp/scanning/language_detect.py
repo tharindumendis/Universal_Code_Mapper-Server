@@ -15,7 +15,7 @@ EXT_MAP = {
     ".hpp": "cpp",
     ".rb": "ruby",
     ".php": "php",
-    ".cs": "c_sharp",
+    ".cs": "csharp",
 }
 
 def detect_language(path: str) -> str | None:

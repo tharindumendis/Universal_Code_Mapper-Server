@@ -1,24 +1,30 @@
 import os
 import json
 from typing import Optional, List, Dict, Any, Union
-from mcp.server.fastmcp import FastMCP
+from fastapi import APIRouter
+from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
 from ucm_mcp.db.connection import get_connection
 from ucm_mcp.identity import get_db_id
 from ucm_mcp.tools.project_tools import resolve_project
 
+
 def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
-def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
+def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
+    router = APIRouter(prefix="/graph", tags=["graph"])
+    
+    @router.get("/calls")
     @mcp.tool(description="""Call when you need to find functions/methods that call or are called by a symbol.
     Parameters:
     'direction' ('callers', 'callees', 'both').
     'symbol_name' name of the symbol to analyze.
     'root_path' root path of the project."""
     )
-    def ucm_find_calls(symbol_name: str, direction: str = "both", root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
+
+    async def ucm_find_calls(symbol_name: str, direction: str = "both", root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
         try:
             project_path = resolve_project(root_path)
             db_id = get_db_id(project_path)
@@ -68,6 +74,7 @@ def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             
         return res
         
+    @router.get("/dependencies")
     @mcp.tool(description="""Call when you need to find what modules or files a specific file imports.
     Parameters:
     'file_path' path to the file.
@@ -106,6 +113,7 @@ def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             
         return rows
         
+    @router.get("/inheritance")
     @mcp.tool(description="""Call when you need to find parent/child inheritance relationships for a class.
     Parameters:
     'symbol_name' name of the symbol to analyze.
@@ -157,6 +165,7 @@ def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             
         return res
 
+    @router.get("/dependents")
     @mcp.tool(description="""Call when you need to find what modules or files import a specific file.
     Parameters:
     'file_path' path to the file.
@@ -194,3 +203,5 @@ def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             return "\n".join(lines)
             
         return rows
+
+    return router

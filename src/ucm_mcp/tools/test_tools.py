@@ -1,6 +1,7 @@
 import json
 from typing import Optional, List, Dict, Any, Union
-from mcp.server.fastmcp import FastMCP
+from fastapi import APIRouter
+from fastmcp import FastMCP
 
 from ucm_mcp.db.connection import get_connection
 from ucm_mcp.identity import get_db_id
@@ -9,7 +10,10 @@ from ucm_mcp.tools.project_tools import resolve_project
 def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
-def register_test_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
+def register_test_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
+    router = APIRouter(prefix="/test", tags=["test"])
+    
+    @router.get("/lookup")
     @mcp.tool(description="""Call when you need to find tests that likely cover or reference a given symbol.
     Parameters:
     'symbol_name' to search for,
@@ -76,3 +80,5 @@ def register_test_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
             return "\n".join(lines)
             
         return results
+
+    return router
