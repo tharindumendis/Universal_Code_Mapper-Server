@@ -14,12 +14,12 @@ def register_framework_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRo
     router = APIRouter(prefix="/api/framework", tags=["framework"])
     
     @router.get("/routes")
-    @mcp.tool(description="""Call when you need to find the controller/handler for a given API route. Applicable ONLY to web frameworks (e.g. Flask, Django, React, Express, etc.).
-    Do NOT use for CLI or non-web applications.
-    Parameters:
-    'root_path' (Optional[str]): The root path of the project.
-    'method' (Optional[str]): The HTTP method of the route (e.g., 'GET').
-    'path' (Optional[str]): The path of the route (e.g., '/api/users')."""
+    @mcp.tool(description=
+"""Find the controller/handler for a given API route. Applicable ONLY to web frameworks.
+Parameters:
+'root_path' (Optional)
+'method' (Optional)
+'path' (Optional)"""
     )
     def ucm_route_lookup(root_path: Optional[str] = None, method: Optional[str] = None, path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
         try:
@@ -62,9 +62,10 @@ def register_framework_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRo
         return rows
         
     @router.get("/architecture")
-    @mcp.tool(description="""Call when you need a breakdown of the project architecture (Controllers, Services, Models, etc.) based on file and symbol conventions.
-    Parameters:
-    'root_path' (Optional[str]): The root path of the project."""
+    @mcp.tool(description=
+"""Breakdown of the project architecture (Controllers, Services, Models, etc.) based on file and symbol conventions
+Parameters:
+'root_path' (Optional)"""
     )
     def ucm_architecture_summary(root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
         try:

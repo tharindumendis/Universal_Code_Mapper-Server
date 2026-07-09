@@ -19,12 +19,13 @@ def register_analysis_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
 
     @router.get("/impact-analysis")
     @mcp.tool(
-        description="""Call when you need to find transitive callers/tests/routes affected by changing a symbol.
-         Parameters: 
-         'depth' controls analysis depth (default 3).
-         'symbol_name' is the name of the symbol to analyze.
-         'root_path' is the root path of the project."""
-         )
+        description=
+"""Find transitive callers/tests/routes affected by changing a symbol
+Parameters: 
+'depth' controls analysis depth (default 3)
+'symbol_name' is the name of the symbol to analyze
+'root_path' (Optional)"""
+    )
     def ucm_impact_analysis(symbol_name: str, root_path: Optional[str] = None, depth: int = 3, format_md: bool = True) -> Union[str, List[str]]:
         try:
             project_path = resolve_project(root_path)
@@ -47,10 +48,11 @@ def register_analysis_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
         
     @router.post("/dead-code-detection")
     @mcp.tool(
-        description="""Call when you need to find unreferenced symbols (functions/methods) indicating potential dead code.
-         Parameters: 
-         'symbol_types' [class, function] is a list of symbol types to filter by (default all).
-         'root_path' is the root path of the project."""
+        description=
+"""Find unreferenced symbols indicating potential dead code
+Parameters: 
+'symbol_types' [function, class, ...] (default all).
+'root_path' (Optional)"""
          )
     def ucm_dead_code_detection(root_path: Optional[str] = None, symbol_types: Optional[List[str]] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
         try:
@@ -73,8 +75,10 @@ def register_analysis_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
         return dead
 
     @router.get("/duplicate-detection") 
-    @mcp.tool(description="""Call when you need to find structurally similar or identically named function pairs.
-    Parameters: 'root_path'  is the root path of the project."""
+    @mcp.tool(description=
+"""Find structurally similar or identically named function pairs
+Parameters:
+'root_path' (Optional)"""
     )
     def ucm_duplicate_detection(root_path: Optional[str] = None, threshold: float = 0.85, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
         try:

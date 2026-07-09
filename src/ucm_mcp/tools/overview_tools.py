@@ -34,9 +34,10 @@ def register_overview_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRou
     router = APIRouter(prefix="/api/overview", tags=["overview"])
     
     @router.get("/project")
-    @mcp.tool(description="""Call when you need a high-level overview of the project, including file counts and language breakdown.
-    Parameters:
-    'root_path' root path of the project."""
+    @mcp.tool(description=
+"""High-level overview of the project, including file counts and language breakdown
+Parameters:
+'root_path' (Optional)"""
     )
     def ucm_project_overview(root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
         project_path = resolve_project(root_path)
@@ -59,12 +60,13 @@ def register_overview_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRou
         return res
 
     @router.get("/directory-map")
-    @mcp.tool(description="""Call when you need to list files and subdirectories within a specific directory.
-    Parameters:
-    'dir_path' (optional, root if omitted).
-    'root_path' root path of the project.
-    'depth' depth of the directory tree.
-    'include_symbols' whether to include symbols (functions/classes) as children of files (default True)."""
+    @mcp.tool(description=
+"""List files, subdirectories and symbols within a specific directory
+Parameters:
+'dir_path' (optional, root if omitted).
+'root_path' (Optional).
+'depth' (default 1).
+'include_symbols' whether to include symbols as children of files (default True)"""
     )
     def ucm_directory_map(dir_path: Optional[str] = None, root_path: Optional[str] = None, depth: int = 1, include_symbols: bool = True, format_md: bool = True) -> Union[str, DirectoryMapResponse]:
         project_path = resolve_project(root_path)
@@ -173,10 +175,11 @@ def register_overview_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRou
         return DirectoryMapResponse(directory=dir_path, tree=tree_nodes)
 
     @router.get("/file-map")
-    @mcp.tool(description="""Call when you need to list all symbols (functions, classes, variables) inside a specific file.
-    Parameters:
-    'file_path' path of the file.
-    'root_path' root path of the project."""
+    @mcp.tool(description=
+"""List all symbols inside a specific file
+Parameters:
+'file_path'
+'root_path' (Optional)"""
     )
     def ucm_file_map(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
         project_path = resolve_project(root_path)

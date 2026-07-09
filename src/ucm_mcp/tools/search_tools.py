@@ -13,13 +13,14 @@ def register_search_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRoute
     router = APIRouter(prefix="/api/search", tags=["search"])
     
     @router.post("/")
-    @mcp.tool(description="""Call when you need to search for symbols.
-    Parameters:
-    'query' (exact/prefix), Optional,
-    'keywords' (FTS5 search) Optional,
-    'symbol_type' [class, function] to filter (default empty list),
-    'limit' to limit the number of results (default 20),
-    'root_path' to specify the project path"""
+    @mcp.tool(description=
+"""Search for symbols
+Parameters:
+'query' (exact/prefix) Optional
+'keywords' (FTS5 search) Optional
+'symbol_type' (default empty list)
+'limit' (default 20)
+'root_path' (Optional)"""
     )
     def ucm_search(
         query: Optional[str] = None, 

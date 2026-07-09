@@ -14,10 +14,11 @@ def register_test_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
     router = APIRouter(prefix="/api/test", tags=["test"])
     
     @router.get("/lookup")
-    @mcp.tool(description="""Call when you need to find tests that likely cover or reference a given symbol.
-    Parameters:
-    'symbol_name' to search for,
-    'root_path' to specify the project path."""
+    @mcp.tool(description=
+"""Tests that likely cover or reference a given symbol
+Parameters:
+'symbol_name'
+'root_path' (Optional)"""
     )
     def ucm_test_lookup(symbol_name: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
         try:

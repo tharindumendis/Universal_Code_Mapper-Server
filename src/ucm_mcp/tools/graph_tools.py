@@ -17,13 +17,13 @@ def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter
     router = APIRouter(prefix="/api/graph", tags=["graph"])
     
     @router.get("/calls")
-    @mcp.tool(description="""Call when you need to find functions/methods that call or are called by a symbol.
-    Parameters:
-    'direction' ('callers', 'callees', 'both').
-    'symbol_name' name of the symbol to analyze.
-    'root_path' root path of the project."""
+    @mcp.tool(description=
+"""Find functions/methods that call or are called by a symbol
+Parameters:
+'direction' (callers, callees), (default both)
+'symbol_name'
+'root_path' (Optional)"""
     )
-
     async def ucm_find_calls(symbol_name: str, direction: str = "both", root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
         try:
             project_path = resolve_project(root_path)
@@ -75,10 +75,11 @@ def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter
         return res
         
     @router.get("/dependencies")
-    @mcp.tool(description="""Call when you need to find what modules or files a specific file imports.
-    Parameters:
-    'file_path' path to the file.
-    'root_path' root path of the project."""
+    @mcp.tool(description=
+"""Find what modules or files a specific file imports
+Parameters:
+'file_path'
+'root_path' (Optional)"""
     )
     def ucm_dependencies(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
         try:
@@ -114,10 +115,11 @@ def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter
         return rows
         
     @router.get("/inheritance")
-    @mcp.tool(description="""Call when you need to find parent/child inheritance relationships for a class.
-    Parameters:
-    'symbol_name' name of the symbol to analyze.
-    'root_path' root path of the project."""
+    @mcp.tool(description=
+"""Call when you need to find parent/child inheritance relationships for a class
+Parameters:
+'symbol_name'
+'root_path' (Optional)"""
     )
     def ucm_inheritance(symbol_name: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
         try:
@@ -166,10 +168,11 @@ def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter
         return res
 
     @router.get("/dependents")
-    @mcp.tool(description="""Call when you need to find what modules or files import a specific file.
-    Parameters:
-    'file_path' path to the file.
-    'root_path' root path of the project."""
+    @mcp.tool(description=
+"""Find what modules or files import a specific file
+Parameters:
+'file_path'
+'root_path' (Optional)"""
     )
     def ucm_dependents(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
         try:

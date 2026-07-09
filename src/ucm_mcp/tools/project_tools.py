@@ -17,10 +17,12 @@ def register_project_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRout
     router = APIRouter(prefix="/api/project", tags=["project"])
     
     @router.post("/index")
-    @mcp.tool(description="""Call when you need to index a project for the first time or re-index it.
-    Parameters: 
-    'root_path' (string) path to the project.
-    'force_full' (bool) for full re-index."""
+    @mcp.tool(description=
+"""Index a project for the first time or re-index it
+Parameters:
+'root_path'
+'force_full' (Default False)
+'watch' (Default True)"""
     )
     def ucm_index_project(root_path: str, force_full: bool = False, watch: bool = True) -> str:
         db_id = index_project_impl(root_path, data_dir=data_dir, force_full=force_full, watch=watch)
@@ -34,14 +36,25 @@ def register_project_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRout
         return f"Active project set to {_ACTIVE_PROJECT}"
 
     @router.get("/list")
-    @mcp.tool(description="""Call when you need to see all currently indexed projects.
-    Parameters:
-    'root_path' (string) path to the project.
-    Tips:
-    if you active current project using this tool you can ignore root_path parameter of other umc tools.
-    in umc tool set
-    'symbol' means class, function, method, interface, struct, etc.
-    """)
+    @mcp.tool(description=
+"""See all currently indexed projects
+Parameters:
+'root_path'
+
+# UCM Tool Tips
+
+## Common Flow
+
+1. Index project using 'ucm_index_project' (with --force_full for full re-index if needed,) once index it will watch the file changes and update the index automatically.
+2. Active Project Once using 'ucm_set_active_project', then you don't need to provide the root_path in the subsequent tool calls.
+3. Use UCM tools without passing 'root_path', it will use the active project.
+
+## UCM Tools Parameter Description
+
+1. 'root_path' (string) path to the project.
+2. 'symbol_types' (function, class, method, variable, interface).
+3. 'symbol_name' name of the symbol. (ex. get_data, process).
+4. 'file_path' path to the file from root_path (ex. "[root_dir]/src/data/x.py).""")
     def ucm_list_projects() -> List[Dict[str, Any]]:
         projects = list_projects(data_dir=data_dir)
         return [dict(p) for p in projects]

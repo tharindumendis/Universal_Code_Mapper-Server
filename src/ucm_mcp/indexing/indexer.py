@@ -67,14 +67,14 @@ def index_project_impl(root_path: str, data_dir: str | None = None, force_full: 
             file_id, is_changed = insert_or_update_file(db_id, rel_path, language, file_hash, size, mtime, data_dir=data_dir)
             seen_file_ids.add(file_id)
             logger.debug(f"In loop detect language: {language}, is_changed: {is_changed},file_id: {file_id},rel_path: {rel_path}")
-            logger.info(f"Scanned file: {rel_path},language: {language},is_changed: {is_changed},file_id: {file_id}")
+            logger.debug(f"Scanned file: {rel_path},language: {language},is_changed: {is_changed},file_id: {file_id}")
             
             if (is_changed or force_full) and language in ("python", "javascript", "typescript", "java", "csharp"):
                 full_path = root_p / rel_path
                 try:
                     with open(full_path, "rb") as f:
                         code_bytes = f.read()
-                    logger.info(f"Read file: {rel_path},language: {language},file_id: {file_id}")
+                    logger.debug(f"Read file: {rel_path},language: {language},file_id: {file_id}")
                     # Symbols
                     symbols = extract_symbols(code_bytes, language)
                     logger.debug(f"Detect symbols: {symbols}")
@@ -114,7 +114,7 @@ def index_project_impl(root_path: str, data_dir: str | None = None, force_full: 
                         
                     if routes:
                         insert_routes(db_id, file_id, routes, data_dir=data_dir)
-                    logger.info(f"Extracted routes: {routes}")
+                    logger.debug(f"Extracted routes: {routes}")
                         
                 except Exception as e:
                     logger.exception(f"Error extracting symbols/routes for {rel_path}: {e}")

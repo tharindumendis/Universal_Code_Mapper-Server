@@ -1,7 +1,20 @@
 [project]
 name = "ucm-mcp"
-version = "0.1.8"
+version = "0.1.9"
 description = "Universal Code Mapper - MCP server for AI-agent code navigation"
+readme = "README.md"
+authors = [
+    { name = "Tharindu Mendis" }
+]
+license = { text = "MIT" }
+keywords = ["mcp", "code-mapper", "ast", "tree-sitter", "ai", "navigation"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 requires-python = ">=3.11"
 dependencies = [
     "mcp[cli]>=1.0",
@@ -13,6 +26,11 @@ dependencies = [
     "fastapi>=0.139.0",
     "fastmcp>=3.4.3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/tharindumendis/Universal_Code_Mapper-Server"
+Repository = "https://github.com/tharindumendis/Universal_Code_Mapper-Server.git"
+Issues = "https://github.com/tharindumendis/Universal_Code_Mapper-Server/issues"
 
 [project.scripts]
 ucm-mcp = "ucm_mcp.cli:main"
