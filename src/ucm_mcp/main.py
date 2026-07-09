@@ -12,6 +12,9 @@ import sys
 
 from fastapi.middleware.cors import CORSMiddleware
 from ucm_mcp.server import build_server
+from ucm_mcp.logger import get_logger
+
+logger = get_logger(__name__)
 
 newMCP = FastMCP("ucm_mcp")
 mcp_app = newMCP.http_app(path="/")
@@ -178,8 +181,10 @@ async def export_graph(root_path: str):
     except ValueError as e:
         if str(e) == "Project not indexed":
             raise HTTPException(status_code=404, detail=str(e))
+        logger.exception("Error exporting graph")
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
+        logger.exception("Unexpected error exporting graph")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/tools")
@@ -224,6 +229,7 @@ async def call_tool_api(tool_name: str, payload: Dict[str, Any] = None):
         
         return {"result": str(result)}
     except Exception as e:
+        logger.exception(f"Error calling tool {tool_name}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.websocket("/ws/index")
@@ -243,6 +249,7 @@ async def websocket_index(websocket: WebSocket):
                         db_id = index_project_impl(root_path, data_dir=None, force_full=force_full, watch=True)
                         asyncio.run_coroutine_threadsafe(websocket.send_json({"status": "complete", "db_id": db_id}), loop)
                     except Exception as e:
+                        logger.exception("Error in websocket indexing thread")
                         asyncio.run_coroutine_threadsafe(websocket.send_json({"status": "error", "message": str(e)}), loop)
                 t = threading.Thread(target=run_indexer)
                 t.start()

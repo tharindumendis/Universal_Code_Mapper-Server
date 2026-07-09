@@ -4,6 +4,9 @@ import argparse
 import threading
 import uvicorn
 import asyncio
+from ucm_mcp.logger import get_logger
+
+logger = get_logger(__name__)
 
 def run_uvicorn(port: int):
     # Run uvicorn with logging disabled to avoid interfering with MCP stdio
@@ -17,8 +20,8 @@ def run_uvicorn(port: int):
     server = uvicorn.Server(config)
     try:
         asyncio.run(server.serve())
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception(f"Uvicorn server crashed: {e}")
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="ucm-mcp")

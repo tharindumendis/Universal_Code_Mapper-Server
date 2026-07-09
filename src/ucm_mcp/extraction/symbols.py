@@ -30,28 +30,39 @@ def extract_symbols(code_bytes: bytes, language: str) -> List[Symbol]:
         if not node:
             return
             
-        t = node.kind() if callable(node.kind) else node.kind
-        child_count = node.child_count() if callable(node.child_count) else node.child_count
-        
         # Helper accessors
         def start_pos(n):
-            return n.start_position() if callable(n.start_position) else n.start_position
+            if hasattr(n, 'start_point'): return n.start_point() if callable(n.start_point) else n.start_point
+            if hasattr(n, 'start_position'): return n.start_position() if callable(n.start_position) else n.start_position
+            return (0, 0)
         def start_b(n):
-            return n.start_byte() if callable(n.start_byte) else n.start_byte
+            return n.start_byte() if callable(getattr(n, 'start_byte', None)) else getattr(n, 'start_byte', 0)
         def end_b(n):
-            return n.end_byte() if callable(n.end_byte) else n.end_byte
+            return n.end_byte() if callable(getattr(n, 'end_byte', None)) else getattr(n, 'end_byte', 0)
         def node_kind(n):
-            return n.kind() if callable(n.kind) else n.kind
+            if hasattr(n, 'type'): return n.type() if callable(n.type) else n.type
+            if hasattr(n, 'kind'): return n.kind() if callable(n.kind) else n.kind
+            return None
+        def get_child_count(n):
+            if hasattr(n, 'child_count'): return n.child_count() if callable(n.child_count) else n.child_count
+            if hasattr(n, 'children'): return len(n.children)
+            return 0
+        def get_child(n, i):
+            if hasattr(n, 'children'): return n.children[i]
+            return n.child(i) if callable(n.child) else n.child[i]
         def get_row(p):
             return p.row if hasattr(p, 'row') else p[0]
         def get_col(p):
             return p.column if hasattr(p, 'column') else p[1]
             
+        t = node_kind(node)
+        child_count = get_child_count(node)
+            
         # Python
         if t in ("class_definition", "function_definition"):
             name_node = None
             for i in range(child_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 if node_kind(child) == "identifier":
                     name_node = child
                     break
@@ -73,7 +84,7 @@ def extract_symbols(code_bytes: bytes, language: str) -> List[Symbol]:
         if t in ("class_declaration", "function_declaration", "method_definition"):
             name_node = None
             for i in range(child_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 if node_kind(child) in ("identifier", "property_identifier"):
                     name_node = child
                     break
@@ -97,7 +108,7 @@ def extract_symbols(code_bytes: bytes, language: str) -> List[Symbol]:
         if t in ("class_declaration", "method_declaration"):
             name_node = None
             for i in range(child_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 if node_kind(child) == "identifier":
                     name_node = child
                     break
@@ -116,7 +127,7 @@ def extract_symbols(code_bytes: bytes, language: str) -> List[Symbol]:
                 })
                 
         for i in range(child_count):
-            walk(node.child(i))
+            walk(get_child(node, i))
                 
     walk(root)
     return symbols

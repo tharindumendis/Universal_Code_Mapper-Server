@@ -3,6 +3,9 @@ from collections import OrderedDict
 from pathlib import Path
 
 from ucm_mcp.config import get_base_dir
+from ucm_mcp.logger import get_logger
+
+logger = get_logger(__name__)
 
 class ConnectionCache:
     def __init__(self, maxsize: int = 20):
@@ -19,7 +22,7 @@ class ConnectionCache:
         project_dir.mkdir(parents=True, exist_ok=True)
         
         db_path = project_dir / "index.sqlite3"
-        print(f"Db path from connection.py: {db_path}")
+        logger.debug(f"Db path from connection.py: {db_path}")
         conn = sqlite3.connect(db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         

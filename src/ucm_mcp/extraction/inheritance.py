@@ -8,22 +8,33 @@ def extract_inheritance(code_bytes: bytes, language: str) -> List[Dict[str, Any]
             tree = parser.parse(code_bytes)
         except TypeError:
             tree = parser.parse(code_bytes.decode("utf-8"))
-    except Exception:
+    except Exception as e:
+        from ucm_mcp.logger import get_logger
+        get_logger(__name__).exception(f"Error extracting inheritance: {e}")
         return []
         
     inheritance_list = []
     root = tree.root_node() if callable(tree.root_node) else tree.root_node
     
     def start_pos(n):
-        return n.start_position() if callable(n.start_position) else n.start_position
+        if hasattr(n, 'start_point'): return n.start_point() if callable(n.start_point) else n.start_point
+        if hasattr(n, 'start_position'): return n.start_position() if callable(n.start_position) else n.start_position
+        return (0, 0)
     def start_b(n):
-        return n.start_byte() if callable(n.start_byte) else n.start_byte
+        return n.start_byte() if callable(getattr(n, 'start_byte', None)) else getattr(n, 'start_byte', 0)
     def end_b(n):
-        return n.end_byte() if callable(n.end_byte) else n.end_byte
+        return n.end_byte() if callable(getattr(n, 'end_byte', None)) else getattr(n, 'end_byte', 0)
     def node_kind(n):
-        return n.kind() if callable(n.kind) else n.kind
+        if hasattr(n, 'type'): return n.type() if callable(n.type) else n.type
+        if hasattr(n, 'kind'): return n.kind() if callable(n.kind) else n.kind
+        return None
     def child_count(n):
-        return n.child_count() if callable(n.child_count) else n.child_count
+        if hasattr(n, 'child_count'): return n.child_count() if callable(n.child_count) else n.child_count
+        if hasattr(n, 'children'): return len(n.children)
+        return 0
+    def get_child(n, i):
+        if hasattr(n, 'children'): return n.children[i]
+        return n.child(i) if callable(n.child) else n.child[i]
     def get_row(p):
         return p.row if hasattr(p, 'row') else p[0]
         
@@ -38,7 +49,7 @@ def extract_inheritance(code_bytes: bytes, language: str) -> List[Dict[str, Any]
         if t == "class_definition":
             class_name = None
             for i in range(c_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 ckind = node_kind(child)
                 if ckind == "identifier":
                     class_name = code_bytes[start_b(child):end_b(child)].decode("utf-8")
@@ -46,11 +57,11 @@ def extract_inheritance(code_bytes: bytes, language: str) -> List[Dict[str, Any]
             
             if class_name:
                 for i in range(c_count):
-                    child = node.child(i)
+                    child = get_child(node, i)
                     ckind = node_kind(child)
                     if ckind == "argument_list":
                         for j in range(child_count(child)):
-                            arg = child.child(j)
+                            arg = get_child(child, j)
                             akind = node_kind(arg)
                             if akind in ("identifier", "attribute"):
                                 parent_name = code_bytes[start_b(arg):end_b(arg)].decode("utf-8")
@@ -66,7 +77,7 @@ def extract_inheritance(code_bytes: bytes, language: str) -> List[Dict[str, Any]
         elif t == "class_declaration" and language in ("javascript", "typescript"):
             class_name = None
             for i in range(c_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 ckind = node_kind(child)
                 if ckind == "identifier":
                     class_name = code_bytes[start_b(child):end_b(child)].decode("utf-8")
@@ -74,11 +85,11 @@ def extract_inheritance(code_bytes: bytes, language: str) -> List[Dict[str, Any]
                     
             if class_name:
                 for i in range(c_count):
-                    child = node.child(i)
+                    child = get_child(node, i)
                     ckind = node_kind(child)
                     if ckind == "class_heritage":
                         for j in range(child_count(child)):
-                            arg = child.child(j)
+                            arg = get_child(child, j)
                             akind = node_kind(arg)
                             if akind in ("identifier", "member_expression"):
                                 parent_name = code_bytes[start_b(arg):end_b(arg)].decode("utf-8")
@@ -91,7 +102,7 @@ def extract_inheritance(code_bytes: bytes, language: str) -> List[Dict[str, Any]
                                 })
                                 
         for i in range(c_count):
-            walk(node.child(i))
+            walk(get_child(node, i))
             
     walk(root)
     return inheritance_list

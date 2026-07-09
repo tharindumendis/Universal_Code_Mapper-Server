@@ -22,6 +22,9 @@ from ucm_mcp.frameworks.dotnet_plugin import extract_dotnet_routes
 from ucm_mcp.frameworks.base import insert_routes
 import threading
 from watchfiles import watch
+from ucm_mcp.logger import get_logger
+
+logger = get_logger(__name__)
 
 _WATCHERS = {}
 
@@ -34,16 +37,16 @@ def _start_watcher(root_path: str, db_id: str, data_dir: str | None):
     _WATCHERS[root_path] = stop_event
     
     def watch_thread():
-        print(f"Starting file watcher for {root_path}")
+        logger.info(f"Starting file watcher for {root_path}")
         try:
             for changes in watch(root_path, stop_event=stop_event):
-                print(f"Changes detected in {root_path}, re-indexing...")
+                logger.info(f"Changes detected in {root_path}, re-indexing...")
                 try:
                     index_project_impl(root_path, data_dir=data_dir, force_full=False, watch=False)
                 except Exception as e:
-                    print(f"Error re-indexing project {root_path}: {e}")
+                    logger.error(f"Error re-indexing project {root_path}: {e}")
         except Exception as e:
-            print(f"File watcher stopped for {root_path}: {e}")
+            logger.info(f"File watcher stopped for {root_path}: {e}")
         finally:
             _WATCHERS.pop(root_path, None)
             
@@ -57,77 +60,90 @@ def index_project_impl(root_path: str, data_dir: str | None = None, force_full: 
     
     root_p = Path(root_path)
     seen_file_ids = set()
-    print(f"indexing project: {root_path}")
-    
-    for rel_path, size, mtime, file_hash in scan_files(root_p):
-        language = detect_language(rel_path)
-        file_id, is_changed = insert_or_update_file(db_id, rel_path, language, file_hash, size, mtime, data_dir=data_dir)
-        seen_file_ids.add(file_id)
-        print(f"In loop detect language: {language}, is_changed: {is_changed},file_id: {file_id},rel_path: {rel_path}")
+    logger.info(f"indexing project: {root_path}")
+    try:
+        for rel_path, size, mtime, file_hash in scan_files(root_p):
+            language = detect_language(rel_path)
+            file_id, is_changed = insert_or_update_file(db_id, rel_path, language, file_hash, size, mtime, data_dir=data_dir)
+            seen_file_ids.add(file_id)
+            logger.debug(f"In loop detect language: {language}, is_changed: {is_changed},file_id: {file_id},rel_path: {rel_path}")
+            logger.info(f"Scanned file: {rel_path},language: {language},is_changed: {is_changed},file_id: {file_id}")
+            
+            if (is_changed or force_full) and language in ("python", "javascript", "typescript", "java", "csharp"):
+                full_path = root_p / rel_path
+                try:
+                    with open(full_path, "rb") as f:
+                        code_bytes = f.read()
+                    logger.info(f"Read file: {rel_path},language: {language},file_id: {file_id}")
+                    # Symbols
+                    symbols = extract_symbols(code_bytes, language)
+                    logger.debug(f"Detect symbols: {symbols}")
+                    insert_symbols(db_id, file_id, symbols, data_dir=data_dir)
+                    
+                    # Imports
+                    imports = extract_imports(code_bytes, language)
+                    if imports:
+                        insert_imports(db_id, file_id, imports, data_dir=data_dir)
+                        
+                    # Calls
+                    calls = extract_calls(code_bytes, language)
+                    if calls:
+                        insert_calls(db_id, file_id, calls, data_dir=data_dir)
+                        
+                    # Inheritance
+                    inheritances = extract_inheritance(code_bytes, language)
+                    if inheritances:
+                        insert_inheritance(db_id, file_id, inheritances, data_dir=data_dir)
+                        
+                    # Framework routes
+                    routes = []
+                    if language == "python":
+                        routes.extend(extract_django_routes(code_bytes, file_id))
+                        routes.extend(extract_flask_routes(code_bytes, file_id))
+                        routes.extend(extract_fastapi_routes(code_bytes, file_id))
+                    elif language in ("javascript", "typescript"):
+                        routes.extend(extract_react_routes(code_bytes, file_id))
+                        routes.extend(extract_express_routes(code_bytes, file_id))
+                        routes.extend(extract_nestjs_routes(code_bytes, file_id))
+                        routes.extend(extract_vue_routes(code_bytes, file_id))
+                        routes.extend(extract_angular_routes(code_bytes, file_id))
+                    elif language == "java":
+                        routes.extend(extract_spring_routes(code_bytes, file_id))
+                    elif language == "csharp":
+                        routes.extend(extract_dotnet_routes(code_bytes, file_id))
+                        
+                    if routes:
+                        insert_routes(db_id, file_id, routes, data_dir=data_dir)
+                    logger.info(f"Extracted routes: {routes}")
+                        
+                except Exception as e:
+                    logger.exception(f"Error extracting symbols/routes for {rel_path}: {e}")
+        logger.info(f"Finished extracting symbols/routes for {root_path}")
+                    
+        # Cleanup deleted files
+        from ucm_mcp.db.connection import get_connection
+        conn = get_connection(db_id, data_dir)
+        cur = conn.cursor()
         
-        if (is_changed or force_full) and language in ("python", "javascript", "typescript", "java", "csharp"):
-            full_path = root_p / rel_path
+        if seen_file_ids:
+            placeholders = ",".join("?" for _ in seen_file_ids)
+            cur.execute(f"DELETE FROM files WHERE id NOT IN ({placeholders})", list(seen_file_ids))
+        else:
+            cur.execute("DELETE FROM files")
+        logger.info(f"Cleaned up files for {root_path}")
+        conn.commit()
+        logger.info(f"Finished cleanup for {root_path}")
+        
+        if watch:
             try:
-                with open(full_path, "rb") as f:
-                    code_bytes = f.read()
-                
-                # Symbols
-                symbols = extract_symbols(code_bytes, language)
-                print(f"Detect symbols: {symbols}")
-                insert_symbols(db_id, file_id, symbols, data_dir=data_dir)
-                
-                # Imports
-                imports = extract_imports(code_bytes, language)
-                if imports:
-                    insert_imports(db_id, file_id, imports, data_dir=data_dir)
-                    
-                # Calls
-                calls = extract_calls(code_bytes, language)
-                if calls:
-                    insert_calls(db_id, file_id, calls, data_dir=data_dir)
-                    
-                # Inheritance
-                inheritances = extract_inheritance(code_bytes, language)
-                if inheritances:
-                    insert_inheritance(db_id, file_id, inheritances, data_dir=data_dir)
-                    
-                # Framework routes
-                routes = []
-                if language == "python":
-                    routes.extend(extract_django_routes(code_bytes, file_id))
-                    routes.extend(extract_flask_routes(code_bytes, file_id))
-                    routes.extend(extract_fastapi_routes(code_bytes, file_id))
-                elif language in ("javascript", "typescript"):
-                    routes.extend(extract_react_routes(code_bytes, file_id))
-                    routes.extend(extract_express_routes(code_bytes, file_id))
-                    routes.extend(extract_nestjs_routes(code_bytes, file_id))
-                    routes.extend(extract_vue_routes(code_bytes, file_id))
-                    routes.extend(extract_angular_routes(code_bytes, file_id))
-                elif language == "java":
-                    routes.extend(extract_spring_routes(code_bytes, file_id))
-                elif language == "csharp":
-                    routes.extend(extract_dotnet_routes(code_bytes, file_id))
-                    
-                if routes:
-                    insert_routes(db_id, file_id, routes, data_dir=data_dir)
-                    
-            except Exception:
-                pass
-                
-    # Cleanup deleted files
-    from ucm_mcp.db.connection import get_connection
-    conn = get_connection(db_id, data_dir)
-    cur = conn.cursor()
-    
-    if seen_file_ids:
-        placeholders = ",".join("?" for _ in seen_file_ids)
-        cur.execute(f"DELETE FROM files WHERE id NOT IN ({placeholders})", list(seen_file_ids))
-    else:
-        cur.execute("DELETE FROM files")
+                _start_watcher(root_path, db_id, data_dir)
+                logger.info(f"Started file watcher for {root_path}")
+            except Exception as e:
+                logger.error(f"Error starting file watcher for {root_path}: {e}")
+
+        logger.info(f"Finished indexing project: {root_path}")
         
-    conn.commit()
-    
-    if watch:
-        _start_watcher(root_path, db_id, data_dir)
-    
-    return db_id
+        return db_id
+    except Exception as e:
+        logger.error(f"Error indexing project {root_path}: {e}")
+        return str(e)

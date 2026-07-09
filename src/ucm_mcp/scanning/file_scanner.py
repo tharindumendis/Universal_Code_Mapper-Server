@@ -3,6 +3,9 @@ import os
 from pathlib import Path
 from typing import Iterator, Tuple
 import pathspec
+from ucm_mcp.logger import get_logger
+
+logger = get_logger(__name__)
 
 def get_ignore_spec(root_path: Path) -> pathspec.PathSpec:
     patterns = [".git/", "node_modules/", "__pycache__/", "venv/", ".venv/", "*.sqlite3", "bin/", "obj/", "build/", "dist/", ".idea/", ".vscode/", "cache/", ".next/", ".vs"]
@@ -15,9 +18,9 @@ def get_ignore_spec(root_path: Path) -> pathspec.PathSpec:
 def scan_files(root_path: Path) -> Iterator[Tuple[str, int, float, str]]:
     """Yields (rel_path, size, mtime, hash)."""
     spec = get_ignore_spec(root_path)
-    
+    logger.info(f"Scaning files in {root_path}")
     for dirpath, dirnames, filenames in os.walk(root_path):
-        print(f"In loop dirpath: {dirpath}, dirnames: {dirnames}, filenames: {filenames}")
+        logger.debug(f"In loop dirpath: {dirpath}, dirnames: {dirnames}, filenames: {filenames}")
         rel_dir = os.path.relpath(dirpath, root_path)
         if rel_dir == ".":
             rel_dir = ""
@@ -42,4 +45,6 @@ def scan_files(root_path: Path) -> Iterator[Tuple[str, int, float, str]]:
                     file_hash = hashlib.sha256(f.read()).hexdigest()
                 yield rel_file, size, mtime, file_hash
             except (OSError, PermissionError):
+                logger.error(f"Error scanning file: {rel_file}")
                 continue
+    logger.info(f"Finished scanning files in {root_path}")

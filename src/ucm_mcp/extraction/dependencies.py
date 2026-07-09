@@ -8,20 +8,29 @@ def extract_imports(code_bytes: bytes, language: str) -> List[Dict[str, Any]]:
             tree = parser.parse(code_bytes)
         except TypeError:
             tree = parser.parse(code_bytes.decode("utf-8"))
-    except Exception:
+    except Exception as e:
+        from ucm_mcp.logger import get_logger
+        get_logger(__name__).exception(f"Error extracting dependencies: {e}")
         return []
         
     imports = []
     root = tree.root_node() if callable(tree.root_node) else tree.root_node
     
     def start_b(n):
-        return n.start_byte() if callable(n.start_byte) else n.start_byte
+        return n.start_byte() if callable(getattr(n, 'start_byte', None)) else getattr(n, 'start_byte', 0)
     def end_b(n):
-        return n.end_byte() if callable(n.end_byte) else n.end_byte
+        return n.end_byte() if callable(getattr(n, 'end_byte', None)) else getattr(n, 'end_byte', 0)
     def node_kind(n):
-        return n.kind() if callable(n.kind) else n.kind
+        if hasattr(n, 'type'): return n.type() if callable(n.type) else n.type
+        if hasattr(n, 'kind'): return n.kind() if callable(n.kind) else n.kind
+        return None
     def child_count(n):
-        return n.child_count() if callable(n.child_count) else n.child_count
+        if hasattr(n, 'child_count'): return n.child_count() if callable(n.child_count) else n.child_count
+        if hasattr(n, 'children'): return len(n.children)
+        return 0
+    def get_child(n, i):
+        if hasattr(n, 'children'): return n.children[i]
+        return n.child(i) if callable(n.child) else n.child[i]
         
     def walk(node):
         if not node:
@@ -33,7 +42,7 @@ def extract_imports(code_bytes: bytes, language: str) -> List[Dict[str, Any]]:
         # Python
         if t == "import_statement":
             for i in range(c_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 ckind = node_kind(child)
                 if ckind == "dotted_name":
                     name = code_bytes[start_b(child):end_b(child)].decode("utf-8")
@@ -42,7 +51,7 @@ def extract_imports(code_bytes: bytes, language: str) -> List[Dict[str, Any]]:
                     name = None
                     alias = None
                     for j in range(child_count(child)):
-                        sub = child.child(j)
+                        sub = get_child(child, j)
                         skind = node_kind(sub)
                         if skind == "dotted_name":
                             name = code_bytes[start_b(sub):end_b(sub)].decode("utf-8")
@@ -58,21 +67,21 @@ def extract_imports(code_bytes: bytes, language: str) -> List[Dict[str, Any]]:
         elif t == "import_from_statement":
             module_name = None
             for i in range(c_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 if node_kind(child) == "dotted_name":
                     module_name = code_bytes[start_b(child):end_b(child)].decode("utf-8")
                     break
             if module_name:
                 for i in range(c_count):
-                    child = node.child(i)
-                    if node_kind(child) == "dotted_name" and start_b(child) > start_b(node.child(1)):
+                    child = get_child(node, i)
+                    if node_kind(child) == "dotted_name" and start_b(child) > start_b(get_child(node, 1)):
                         name = code_bytes[start_b(child):end_b(child)].decode("utf-8")
                         imports.append({"to_module": f"{module_name}.{name}", "alias": None, "is_dynamic": False})
                     elif node_kind(child) == "aliased_import":
                         name = None
                         alias = None
                         for j in range(child_count(child)):
-                            sub = child.child(j)
+                            sub = get_child(child, j)
                             if node_kind(sub) == "dotted_name":
                                 name = code_bytes[start_b(sub):end_b(sub)].decode("utf-8")
                             elif node_kind(sub) == "identifier":
@@ -84,7 +93,7 @@ def extract_imports(code_bytes: bytes, language: str) -> List[Dict[str, Any]]:
         elif t == "import_statement" and language in ("javascript", "typescript"):
             module_name = None
             for i in range(c_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 if node_kind(child) == "string":
                     module_name = code_bytes[start_b(child)+1:end_b(child)-1].decode("utf-8")
             if module_name:
@@ -93,7 +102,7 @@ def extract_imports(code_bytes: bytes, language: str) -> List[Dict[str, Any]]:
         elif t == "call_expression" and language in ("javascript", "typescript"):
             is_require = False
             for i in range(c_count):
-                child = node.child(i)
+                child = get_child(node, i)
                 if node_kind(child) == "identifier":
                     name = code_bytes[start_b(child):end_b(child)].decode("utf-8")
                     if name == "require":
@@ -101,16 +110,16 @@ def extract_imports(code_bytes: bytes, language: str) -> List[Dict[str, Any]]:
                         break
             if is_require:
                 for i in range(c_count):
-                    child = node.child(i)
+                    child = get_child(node, i)
                     if node_kind(child) == "arguments":
                         for j in range(child_count(child)):
-                            arg = child.child(j)
+                            arg = get_child(child, j)
                             if node_kind(arg) == "string":
                                 module_name = code_bytes[start_b(arg)+1:end_b(arg)-1].decode("utf-8")
                                 imports.append({"to_module": module_name, "alias": None, "is_dynamic": True})
                                 
         for i in range(c_count):
-            walk(node.child(i))
+            walk(get_child(node, i))
             
     walk(root)
     return imports
