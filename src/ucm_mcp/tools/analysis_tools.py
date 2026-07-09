@@ -15,7 +15,7 @@ def _normalize_path(p: str) -> str:
 
 def register_analysis_tools(mcp: FastMCP, data_dir: str | None = None) -> None:
     
-    router = APIRouter(prefix="/analysis", tags=["analysis"])
+    router = APIRouter(prefix="/api/analysis", tags=["analysis"])
 
     @router.get("/impact-analysis")
     @mcp.tool(

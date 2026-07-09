@@ -11,7 +11,7 @@ def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
 def register_framework_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
-    router = APIRouter(prefix="/framework", tags=["framework"])
+    router = APIRouter(prefix="/api/framework", tags=["framework"])
     
     @router.get("/routes")
     @mcp.tool(description="""Call when you need to find the controller/handler for a given API route. Applicable ONLY to web frameworks (e.g. Flask, Django, React, Express, etc.).

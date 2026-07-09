@@ -31,7 +31,7 @@ def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
 def register_overview_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
-    router = APIRouter(prefix="/overview", tags=["overview"])
+    router = APIRouter(prefix="/api/overview", tags=["overview"])
     
     @router.get("/project")
     @mcp.tool(description="""Call when you need a high-level overview of the project, including file counts and language breakdown.

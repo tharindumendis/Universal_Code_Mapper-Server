@@ -14,7 +14,7 @@ def resolve_project(root_path: Optional[str]) -> str:
     raise ValueError("No active project set. Call ucm_set_active_project or pass root_path.")
 
 def register_project_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
-    router = APIRouter(prefix="/project", tags=["project"])
+    router = APIRouter(prefix="/api/project", tags=["project"])
     
     @router.post("/index")
     @mcp.tool(description="""Call when you need to index a project for the first time or re-index it.

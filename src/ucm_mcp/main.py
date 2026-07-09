@@ -1,15 +1,26 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastmcp import FastMCP
 from pydantic import BaseModel
 from typing import Any, Dict
 import asyncio
+import threading
 
+from fastapi.middleware.cors import CORSMiddleware
 from ucm_mcp.server import build_server
 
 newMCP = FastMCP("ucm_mcp")
 mcp_app = newMCP.http_app(path="/")
 app = FastAPI(title="UCM API", lifespan=mcp_app.lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 mcp, app = build_server(mcp=newMCP, app=app)
 
 # We will create the mcp_app but mount it under a specific path so it doesn't shadow everything
@@ -135,6 +146,26 @@ def view_graph():
 def read_root():
     return {"health": "ok", "message": "UCM API Server is running."}
 
+@app.get("/api/graph")
+async def export_graph(root_path: str):
+    """Export the full graph including files, symbols, routes, and relationships."""
+    from ucm_mcp.tools.project_tools import resolve_project
+    from ucm_mcp.identity import get_db_id
+    from ucm_mcp.analysis.export import get_full_graph
+    
+    try:
+        project_path = resolve_project(root_path)
+        db_id = get_db_id(project_path)
+        # Assuming data_dir handling is default for now
+        graph_data = get_full_graph(db_id, data_dir=None)
+        return graph_data
+    except ValueError as e:
+        if str(e) == "Project not indexed":
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/tools")
 async def list_tools():
     """List all available tools in the MCP server."""
@@ -178,6 +209,29 @@ async def call_tool_api(tool_name: str, payload: Dict[str, Any] = None):
         return {"result": str(result)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.websocket("/ws/index")
+async def websocket_index(websocket: WebSocket):
+    await websocket.accept()
+    loop = asyncio.get_running_loop()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            if data.get("action") == "index":
+                root_path = data.get("root_path")
+                force_full = data.get("force_full", False)
+                def run_indexer():
+                    try:
+                        asyncio.run_coroutine_threadsafe(websocket.send_json({"status": "indexing", "message": f"Indexing {root_path}..."}), loop)
+                        from ucm_mcp.indexing.indexer import index_project_impl
+                        db_id = index_project_impl(root_path, data_dir=None, force_full=force_full, watch=True)
+                        asyncio.run_coroutine_threadsafe(websocket.send_json({"status": "complete", "db_id": db_id}), loop)
+                    except Exception as e:
+                        asyncio.run_coroutine_threadsafe(websocket.send_json({"status": "error", "message": str(e)}), loop)
+                t = threading.Thread(target=run_indexer)
+                t.start()
+    except WebSocketDisconnect:
+        pass
 
 # Mount the MCP SSE application on a subpath to prevent it from overriding the / routes.
 app.mount("/mcp", mcp_app)

@@ -10,7 +10,7 @@ def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
 def register_search_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
-    router = APIRouter(prefix="/search", tags=["search"])
+    router = APIRouter(prefix="/api/search", tags=["search"])
     
     @router.post("/")
     @mcp.tool(description="""Call when you need to search for symbols.

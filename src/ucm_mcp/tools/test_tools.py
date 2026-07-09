@@ -11,7 +11,7 @@ def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
 def register_test_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
-    router = APIRouter(prefix="/test", tags=["test"])
+    router = APIRouter(prefix="/api/test", tags=["test"])
     
     @router.get("/lookup")
     @mcp.tool(description="""Call when you need to find tests that likely cover or reference a given symbol.

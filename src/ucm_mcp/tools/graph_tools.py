@@ -14,7 +14,7 @@ def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
 
 def register_graph_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRouter:
-    router = APIRouter(prefix="/graph", tags=["graph"])
+    router = APIRouter(prefix="/api/graph", tags=["graph"])
     
     @router.get("/calls")
     @mcp.tool(description="""Call when you need to find functions/methods that call or are called by a symbol.
