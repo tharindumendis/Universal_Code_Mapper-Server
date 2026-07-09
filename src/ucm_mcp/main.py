@@ -6,12 +6,27 @@ from typing import Any, Dict
 import asyncio
 import threading
 
+import contextlib
+import os
+import sys
+
 from fastapi.middleware.cors import CORSMiddleware
 from ucm_mcp.server import build_server
 
 newMCP = FastMCP("ucm_mcp")
 mcp_app = newMCP.http_app(path="/")
-app = FastAPI(title="UCM API", lifespan=mcp_app.lifespan)
+
+@contextlib.asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    port = os.environ.get("UCM_PORT", "8000")
+    print("\n" + "="*60, file=sys.stderr)
+    print("🚀 UCM Backend is running!", file=sys.stderr)
+    print(f"🌐 Open the UI at: https://ucm-ui.netlify.app/?port={port}", file=sys.stderr)
+    print("="*60 + "\n", file=sys.stderr)
+    async with mcp_app.lifespan(app) as ctx:
+        yield ctx
+
+app = FastAPI(title="UCM API", lifespan=app_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,7 +36,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-mcp, app = build_server(mcp=newMCP, app=app)
+data_dir = os.environ.get("UCM_DATA_DIR")
+mcp, app = build_server(data_dir=data_dir, mcp=newMCP, app=app)
 
 # We will create the mcp_app but mount it under a specific path so it doesn't shadow everything
 

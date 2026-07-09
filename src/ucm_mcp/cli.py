@@ -1,6 +1,24 @@
-from mcp.server.fastmcp import FastMCP
+import os
+import sys
 import argparse
-from ucm_mcp.server import build_server
+import threading
+import uvicorn
+import asyncio
+
+def run_uvicorn(port: int):
+    # Run uvicorn with logging disabled to avoid interfering with MCP stdio
+    config = uvicorn.Config(
+        "ucm_mcp.main:app",
+        host="127.0.0.1",
+        port=port,
+        log_level="error",
+        access_log=False,
+    )
+    server = uvicorn.Server(config)
+    try:
+        asyncio.run(server.serve())
+    except Exception:
+        pass
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="ucm-mcp")
@@ -9,19 +27,21 @@ def main() -> None:
     parser.add_argument("--data-dir", default=None, help="Override ~/.ucm storage location")
     args = parser.parse_args()
 
-    mcp : FastMCP = build_server(data_dir=args.data_dir)
+    # Set env vars before importing main
+    if args.data_dir:
+        os.environ["UCM_DATA_DIR"] = args.data_dir
+    os.environ["UCM_PORT"] = str(args.port)
+
+    # Import mcp from main after setting env vars
+    from ucm_mcp.main import mcp
+
     if args.http:
-        # FastMCP's .run() method has different signatures depending on version/transport,
-        # but following the MCP Python SDK guidelines, streamable HTTP generally requires ASGI/SSE setup.
-        # FastMCP might wrap this in the future, but currently run(transport="sse", port=args.port) is not standard.
-        # We will use the FastMCP built-in run method which might not natively support HTTP the way `mcp.run()` implies without Starlette/FastAPI.
-        # But wait, the final-plan.md explicitly uses this:
-        # mcp.run(transport="streamable_http", port=args.port)
-        # Let's stick to the plan's code!
-        # Actually, let's use the standard FastMCP API for SSE if streamable_http is just a placeholder name from the plan.
-        # I'll just use what the plan gave exactly to ensure it meets requirements.
-        mcp.run(transport="sse",)
+        # Run natively in the main thread (allows logs)
+        uvicorn.run("ucm_mcp.main:app", host="127.0.0.1", port=args.port)
     else:
+        # Run stdio in main thread, run UI http server in background
+        t = threading.Thread(target=run_uvicorn, args=(args.port,), daemon=True)
+        t.start()
         mcp.run()
 
 if __name__ == "__main__":
