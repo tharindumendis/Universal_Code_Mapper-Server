@@ -116,7 +116,7 @@ Parameters:
         
     @router.get("/inheritance")
     @mcp.tool(description=
-"""Call when you need to find parent/child inheritance relationships for a class
+"""Find parent/child inheritance relationships for a class
 Parameters:
 'symbol_name'
 'root_path' (Optional)"""

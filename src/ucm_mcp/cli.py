@@ -8,6 +8,8 @@ from ucm_mcp.logger import get_logger
 
 logger = get_logger(__name__)
 
+FRONTEND_URL="https://ucm-ui.netlify.app"
+
 def run_uvicorn(port: int):
     # Run uvicorn with logging disabled to avoid interfering with MCP stdio
     config = uvicorn.Config(
@@ -26,13 +28,14 @@ def run_uvicorn(port: int):
 def main() -> None:
     parser = argparse.ArgumentParser(prog="ucm-mcp")
     parser.add_argument("--http", action="store_true", help="Use streamable HTTP transport instead of stdio")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--port", type=int, default=51000)
     parser.add_argument("--data-dir", default=None, help="Override ~/.ucm storage location")
     args = parser.parse_args()
 
     # Set env vars before importing main
     if args.data_dir:
         os.environ["UCM_DATA_DIR"] = args.data_dir
+    
     os.environ["UCM_PORT"] = str(args.port)
 
     # Import mcp from main after setting env vars
