@@ -38,8 +38,13 @@ Parameters:
             await send_tool_end_Message("ucm_search", tool_args, res)
             return res
             
-        project_path = resolve_project(root_path)
-        db_id = get_db_id(project_path)
+        try:
+            project_path = resolve_project(root_path)
+            db_id = get_db_id(project_path)
+        except ValueError as e:
+            res = str(e) if format_md else [{"error": str(e)}]
+            await send_tool_end_Message("ucm_search", tool_args, res)
+            return res
         
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()

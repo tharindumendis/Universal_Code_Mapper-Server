@@ -45,10 +45,16 @@ Parameters:
 'root_path' (Optional)"""
     )
     async def ucm_project_overview(root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
-        await send_tool_start_Message("ucm_project_overview", {"root_path": root_path, "format_md": format_md})
+        tool_args = {"root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_project_overview", tool_args)
 
-        project_path = resolve_project(root_path)
-        db_id = get_db_id(project_path)
+        try:
+            project_path = resolve_project(root_path)
+            db_id = get_db_id(project_path)
+        except ValueError as e:
+            res = str(e) if format_md else {"error": str(e)}
+            await send_tool_end_Message("ucm_project_overview", tool_args, res)
+            return res
         
         counts = get_file_counts(db_id, data_dir=data_dir)
         total = get_total_file_count(db_id, data_dir=data_dir)
@@ -77,10 +83,16 @@ Parameters:
 'depth' (default 1).
 'include_symbols' whether to include symbols as children of files (default True)"""
     )
-    async def ucm_directory_map(dir_path: Optional[str] = None, root_path: Optional[str] = None, depth: int = 1, include_symbols: bool = True, format_md: bool = True) -> Union[str, DirectoryMapResponse]:
-        await send_tool_start_Message("ucm_directory_map", {"dir_path": dir_path, "root_path": root_path, "depth": depth, "include_symbols": include_symbols, "format_md": format_md})
-        project_path = resolve_project(root_path)
-        db_id = get_db_id(project_path)
+    async def ucm_directory_map(dir_path: Optional[str] = None, root_path: Optional[str] = None, depth: int = 1, include_symbols: bool = True, format_md: bool = True) -> Union[str, Dict[str, Any], DirectoryMapResponse]:
+        tool_args = {"dir_path": dir_path, "root_path": root_path, "depth": depth, "include_symbols": include_symbols, "format_md": format_md}
+        await send_tool_start_Message("ucm_directory_map", tool_args)
+        try:
+            project_path = resolve_project(root_path)
+            db_id = get_db_id(project_path)
+        except ValueError as e:
+            res = str(e) if format_md else {"error": str(e)}
+            await send_tool_end_Message("ucm_directory_map", tool_args, res)
+            return res
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
         
@@ -197,9 +209,15 @@ Parameters:
 'root_path' (Optional)"""
     )
     async def ucm_file_map(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
-        await send_tool_start_Message("ucm_file_map", {"file_path": file_path, "root_path": root_path, "format_md": format_md})
-        project_path = resolve_project(root_path)
-        db_id = get_db_id(project_path)
+        tool_args = {"file_path": file_path, "root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_file_map", tool_args)
+        try:
+            project_path = resolve_project(root_path)
+            db_id = get_db_id(project_path)
+        except ValueError as e:
+            res = str(e) if format_md else [{"error": str(e)}]
+            await send_tool_end_Message("ucm_file_map", tool_args, res)
+            return res
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
         
