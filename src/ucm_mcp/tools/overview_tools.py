@@ -1,3 +1,4 @@
+from ucm_mcp.web_socket_manager import WebSocketMessage
 import json
 from typing import Optional, Dict, Any, List, Union
 from fastapi import APIRouter
@@ -7,6 +8,10 @@ from ucm_mcp.identity import get_db_id
 from pydantic import BaseModel
 from ucm_mcp.db.repository import get_file_counts, get_total_file_count
 from ucm_mcp.db.connection import get_connection
+from ucm_mcp.logger import get_logger
+from ucm_mcp.web_socket_manager import web_socket_manager, send_tool_start_Message, send_tool_end_Message
+
+logger = get_logger(__name__)
 
 class SymbolNode(BaseModel):
     name: str
@@ -39,7 +44,9 @@ def register_overview_tools(mcp: FastMCP, data_dir: str | None = None) -> APIRou
 Parameters:
 'root_path' (Optional)"""
     )
-    def ucm_project_overview(root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
+    async def ucm_project_overview(root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
+        await send_tool_start_Message("ucm_project_overview", {"root_path": root_path, "format_md": format_md})
+
         project_path = resolve_project(root_path)
         db_id = get_db_id(project_path)
         
@@ -56,7 +63,9 @@ Parameters:
             md = [f"# Project Overview: {project_path}", f"- **Total Files**: {total}", "- **Language Breakdown**:"]
             for lang, count in counts.items():
                 md.append(f"  - {lang or 'Unknown'}: {count}")
+            await send_tool_end_Message("ucm_project_overview", {"root_path": root_path, "format_md": format_md}, res)
             return "\n".join(md)
+        await send_tool_end_Message("ucm_project_overview", {"root_path": root_path, "format_md": format_md}, res)
         return res
 
     @router.get("/directory-map")
@@ -68,7 +77,8 @@ Parameters:
 'depth' (default 1).
 'include_symbols' whether to include symbols as children of files (default True)"""
     )
-    def ucm_directory_map(dir_path: Optional[str] = None, root_path: Optional[str] = None, depth: int = 1, include_symbols: bool = True, format_md: bool = True) -> Union[str, DirectoryMapResponse]:
+    async def ucm_directory_map(dir_path: Optional[str] = None, root_path: Optional[str] = None, depth: int = 1, include_symbols: bool = True, format_md: bool = True) -> Union[str, DirectoryMapResponse]:
+        await send_tool_start_Message("ucm_directory_map", {"dir_path": dir_path, "root_path": root_path, "depth": depth, "include_symbols": include_symbols, "format_md": format_md})
         project_path = resolve_project(root_path)
         db_id = get_db_id(project_path)
         conn = get_connection(db_id, data_dir)
@@ -154,7 +164,9 @@ Parameters:
                     md.append(f"- (Error: Directory '{display_path}' does not exist)")
                 else:
                     md.append(f"- (Error: Directory '{display_path}' is empty or contains no indexed files)")
-                return "\n".join(md)
+                res = "\n".join(md)
+                await send_tool_end_Message("ucm_directory_map", {"dir_path": dir_path, "root_path": root_path, "depth": depth, "include_symbols": include_symbols, "format_md": format_md}, res)
+                return res
             
             def _print_tree(node_list: List[Union['DirNode', FileNode]], indent_level=0):
                 lines = []
@@ -170,9 +182,12 @@ Parameters:
                 return lines
                 
             md.extend(_print_tree(tree_nodes))
-            return "\n".join(md)
-        
-        return DirectoryMapResponse(directory=dir_path, tree=tree_nodes)
+            res = "\n".join(md)
+            await send_tool_end_Message("ucm_directory_map", {"dir_path": dir_path, "root_path": root_path, "depth": depth, "include_symbols": include_symbols, "format_md": format_md}, res)
+            return res
+        res = DirectoryMapResponse(directory=dir_path, tree=tree_nodes)
+        await send_tool_end_Message("ucm_directory_map", {"dir_path": dir_path, "root_path": root_path, "depth": depth, "include_symbols": include_symbols, "format_md": format_md}, res)
+        return res
 
     @router.get("/file-map")
     @mcp.tool(description=
@@ -181,7 +196,8 @@ Parameters:
 'file_path'
 'root_path' (Optional)"""
     )
-    def ucm_file_map(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+    async def ucm_file_map(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+        await send_tool_start_Message("ucm_file_map", {"file_path": file_path, "root_path": root_path, "format_md": format_md})
         project_path = resolve_project(root_path)
         db_id = get_db_id(project_path)
         conn = get_connection(db_id, data_dir)
@@ -211,11 +227,17 @@ Parameters:
                         md.append(f"- (Error: File '{file_path}' is not indexed or unsupported format)")
                 else:
                     md.append("- (No symbols found in this file)")
-                return "\n".join(md)
+                res = "\n".join(md)
+                await send_tool_end_Message("ucm_file_map", {"file_path": file_path, "root_path": root_path, "format_md": format_md}, res)
+                return res
                 
             for r in rows:
                 md.append(f"- **{r['type']}** `{r['name']}` (Line {r['line']})")
-            return "\n".join(md)
-        return rows
+            res = "\n".join(md)
+            await send_tool_end_Message("ucm_file_map", {"file_path": file_path, "root_path": root_path, "format_md": format_md}, res)
+            return res
+        res = rows
+        await send_tool_end_Message("ucm_file_map", {"file_path": file_path, "root_path": root_path, "format_md": format_md}, res)
+        return res
 
     return router

@@ -4,6 +4,7 @@ from fastmcp import FastMCP
 from ucm_mcp.indexing.indexer import index_project_impl
 from ucm_mcp.identity import list_projects, canonicalize_path
 from ucm_mcp.cli import FRONTEND_URL
+from ucm_mcp.web_socket_manager import send_tool_start_Message, send_tool_end_Message
 
 _ACTIVE_PROJECT: Optional[str] = None
 
@@ -25,9 +26,13 @@ Parameters:
 'force_full' (Default False)
 'watch' (Default True)"""
     )
-    def ucm_index_project(root_path: str, force_full: bool = False, watch: bool = True) -> str:
+    async def ucm_index_project(root_path: str, force_full: bool = False, watch: bool = True) -> str:
+        tool_args = {"root_path": root_path, "force_full": force_full, "watch": watch}
+        await send_tool_start_Message("ucm_index_project", tool_args)
         db_id = index_project_impl(root_path, data_dir=data_dir, force_full=force_full, watch=watch)
-        return f"Project indexed successfully. db_id: {db_id}"
+        res = f"Project indexed successfully. db_id: {db_id}"
+        await send_tool_end_Message("ucm_index_project", tool_args, res)
+        return res
 
     @router.post("/active")
     @mcp.tool(description=
@@ -35,10 +40,14 @@ Parameters:
 Parameters:
 'root_path' (string) path to the project.
 """)
-    def ucm_set_active_project(root_path: str) -> str:
+    async def ucm_set_active_project(root_path: str) -> str:
+        tool_args = {"root_path": root_path}
+        await send_tool_start_Message("ucm_set_active_project", tool_args)
         global _ACTIVE_PROJECT
         _ACTIVE_PROJECT = canonicalize_path(root_path)
-        return f"Active project set to {_ACTIVE_PROJECT}"
+        res = f"Active project set to {_ACTIVE_PROJECT}"
+        await send_tool_end_Message("ucm_set_active_project", tool_args, res)
+        return res
 
     @router.get("/list")
     @mcp.tool(description=f"""See all currently indexed projects
@@ -63,8 +72,12 @@ Send this URL to user to see UCM UI: {FRONTEND_URL}/?port={port}
 2. 'symbol_types' (function, class, method, variable, interface).
 3. 'symbol_name' name of the symbol. (ex. get_data, process).
 4. 'file_path' path to the file from root_path (ex. "[root_dir]/src/data/x.py).""")
-    def ucm_list_projects() -> List[Dict[str, Any]]:
+    async def ucm_list_projects() -> List[Dict[str, Any]]:
+        tool_args = {}
+        await send_tool_start_Message("ucm_list_projects", tool_args)
         projects = list_projects(data_dir=data_dir)
-        return [dict(p) for p in projects]
+        res = [dict(p) for p in projects]
+        await send_tool_end_Message("ucm_list_projects", tool_args, res)
+        return res
 
     return router

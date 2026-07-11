@@ -5,6 +5,7 @@ from fastmcp import FastMCP
 from ucm_mcp.tools.project_tools import resolve_project
 from ucm_mcp.identity import get_db_id
 from ucm_mcp.db.connection import get_connection
+from ucm_mcp.web_socket_manager import send_tool_start_Message, send_tool_end_Message
 
 def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
@@ -22,7 +23,7 @@ Parameters:
 'limit' (default 20)
 'root_path' (Optional)"""
     )
-    def ucm_search(
+    async def ucm_search(
         query: Optional[str] = None, 
         keywords: Optional[List[str]] = None, 
         symbol_type: Optional[str] = None, 
@@ -30,8 +31,12 @@ Parameters:
         root_path: Optional[str] = None, 
         format_md: bool = True
     ) -> Union[str, List[Dict[str, Any]]]:
+        tool_args = {"query": query, "keywords": keywords, "symbol_type": symbol_type, "limit": limit, "root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_search", tool_args)
         if not query and not keywords:
-            return "Error: Must provide either 'query' or 'keywords' parameter." if format_md else []
+            res = "Error: Must provide either 'query' or 'keywords' parameter." if format_md else []
+            await send_tool_end_Message("ucm_search", tool_args, res)
+            return res
             
         project_path = resolve_project(root_path)
         db_id = get_db_id(project_path)
@@ -77,8 +82,12 @@ Parameters:
                 md.append("- (No results found)")
             for r in rows:
                 md.append(f"- **{r['type']}** `{r['name']}` ({r['path']}:{r['line']})")
-            return "\n".join(md)
+            res = "\n".join(md)
+            await send_tool_end_Message("ucm_search", tool_args, res)
+            return res
             
-        return rows
+        res = rows
+        await send_tool_end_Message("ucm_search", tool_args, res)
+        return res
 
     return router

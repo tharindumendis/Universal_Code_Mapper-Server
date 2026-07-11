@@ -132,6 +132,15 @@ def index_project_impl(root_path: str, data_dir: str | None = None, force_full: 
             cur.execute("DELETE FROM files")
         logger.info(f"Cleaned up files for {root_path}")
         conn.commit()
+        
+        # Update stats in registry
+        from ucm_mcp.identity import update_project_stats
+        cur.execute("SELECT COUNT(*) as c FROM files")
+        total_files = cur.fetchone()["c"]
+        cur.execute("SELECT COUNT(*) as c FROM symbols")
+        total_symbols = cur.fetchone()["c"]
+        update_project_stats(db_id, total_files, total_symbols, data_dir)
+        
         logger.info(f"Finished cleanup for {root_path}")
         
         if watch:

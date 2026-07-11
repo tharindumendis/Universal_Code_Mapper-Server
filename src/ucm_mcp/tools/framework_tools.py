@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 from ucm_mcp.db.connection import get_connection
 from ucm_mcp.identity import get_db_id
 from ucm_mcp.tools.project_tools import resolve_project
+from ucm_mcp.web_socket_manager import send_tool_start_Message, send_tool_end_Message
 
 def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
@@ -21,12 +22,16 @@ Parameters:
 'method' (Optional)
 'path' (Optional)"""
     )
-    def ucm_route_lookup(root_path: Optional[str] = None, method: Optional[str] = None, path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+    async def ucm_route_lookup(root_path: Optional[str] = None, method: Optional[str] = None, path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+        tool_args = {"root_path": root_path, "method": method, "path": path, "format_md": format_md}
+        await send_tool_start_Message("ucm_route_lookup", tool_args)
         try:
             project_path = resolve_project(root_path)
             db_id = get_db_id(project_path)
         except ValueError as e:
-            return str(e) if format_md else [{"error": str(e)}]
+            res = str(e) if format_md else [{"error": str(e)}]
+            await send_tool_end_Message("ucm_route_lookup", tool_args, res)
+            return res
             
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
@@ -50,16 +55,22 @@ Parameters:
         
         if format_md:
             if not rows:
-                return "No routes found matching the criteria."
+                res = "No routes found matching the criteria."
+                await send_tool_end_Message("ucm_route_lookup", tool_args, res)
+                return res
                 
             lines = ["## Routes found:"]
             for r in rows:
                 handler = r['handler_name'] or "UnknownHandler"
                 file_p = r['file_path'] or "UnknownFile"
                 lines.append(f"- `[{r['framework']}]` {r['method']} `{r['path']}` -> {handler} ({file_p})")
-            return "\n".join(lines)
+            res = "\n".join(lines)
+            await send_tool_end_Message("ucm_route_lookup", tool_args, res)
+            return res
             
-        return rows
+        res = rows
+        await send_tool_end_Message("ucm_route_lookup", tool_args, res)
+        return res
         
     @router.get("/architecture")
     @mcp.tool(description=
@@ -67,12 +78,16 @@ Parameters:
 Parameters:
 'root_path' (Optional)"""
     )
-    def ucm_architecture_summary(root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
+    async def ucm_architecture_summary(root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
+        tool_args = {"root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_architecture_summary", tool_args)
         try:
             project_path = resolve_project(root_path)
             db_id = get_db_id(project_path)
         except ValueError as e:
-            return str(e) if format_md else {"error": str(e)}
+            res = str(e) if format_md else {"error": str(e)}
+            await send_tool_end_Message("ucm_architecture_summary", tool_args, res)
+            return res
             
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
@@ -109,7 +124,7 @@ Parameters:
         }
         
         if format_md:
-            return (
+            res = (
                 "## Architecture Breakdown (Heuristic):\n"
                 f"- **Controllers/Views**: {controllers} files\n"
                 f"- **Services/Business Logic**: {services} files\n"
@@ -117,7 +132,10 @@ Parameters:
                 f"- **Utilities/Helpers**: {utils} files\n"
                 f"- **Tests**: {tests} files"
             )
+            await send_tool_end_Message("ucm_architecture_summary", tool_args, res)
+            return res
             
+        await send_tool_end_Message("ucm_architecture_summary", tool_args, res)
         return res
 
     return router

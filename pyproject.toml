@@ -1,6 +1,6 @@
 [project]
 name = "ucm-mcp"
-version = "0.2.3"
+version = "0.2.9"
 description = "Universal Code Mapper - MCP server for AI-agent code navigation"
 readme = "README.md"
 authors = [

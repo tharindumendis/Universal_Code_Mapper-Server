@@ -85,6 +85,18 @@ def get_project(root_path: str | Path, data_dir: str | None = None) -> Optional[
             return dict(row) # type: ignore
         return None
 
+def update_project_stats(db_id: str, file_count: int, symbol_count: int, data_dir: str | None = None) -> None:
+    db_path = get_registry_db_path(data_dir)
+    if not db_path.exists():
+        return
+        
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "UPDATE projects SET file_count = ?, symbol_count = ?, last_indexed_at = ? WHERE db_id = ?",
+            (file_count, symbol_count, time.time(), db_id)
+        )
+        conn.commit()
+
 def list_projects(data_dir: str | None = None) -> list[ProjectInfo]:
     db_path = get_registry_db_path(data_dir)
     if not db_path.exists():

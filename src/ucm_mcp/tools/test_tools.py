@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 from ucm_mcp.db.connection import get_connection
 from ucm_mcp.identity import get_db_id
 from ucm_mcp.tools.project_tools import resolve_project
+from ucm_mcp.web_socket_manager import send_tool_start_Message, send_tool_end_Message
 
 def _normalize_path(p: str) -> str:
     return p.replace("\\\\", "/").replace("\\", "/")
@@ -20,12 +21,16 @@ Parameters:
 'symbol_name'
 'root_path' (Optional)"""
     )
-    def ucm_test_lookup(symbol_name: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+    async def ucm_test_lookup(symbol_name: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+        tool_args = {"symbol_name": symbol_name, "root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_test_lookup", tool_args)
         try:
             project_path = resolve_project(root_path)
             db_id = get_db_id(project_path)
         except ValueError as e:
-            return str(e) if format_md else [{"error": str(e)}]
+            res = str(e) if format_md else [{"error": str(e)}]
+            await send_tool_end_Message("ucm_test_lookup", tool_args, res)
+            return res
             
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
@@ -62,7 +67,9 @@ Parameters:
         
         if format_md:
             if not rows and not calls:
-                return f"No tests found covering '{symbol_name}'."
+                res = f"No tests found covering '{symbol_name}'."
+                await send_tool_end_Message("ucm_test_lookup", tool_args, res)
+                return res
                 
             lines = [f"## Tests covering '{symbol_name}':"]
             seen = set()
@@ -78,8 +85,12 @@ Parameters:
                     seen.add(desc)
                     lines.append(desc)
                     
-            return "\n".join(lines)
+            res = "\n".join(lines)
+            await send_tool_end_Message("ucm_test_lookup", tool_args, res)
+            return res
             
-        return results
+        res = results
+        await send_tool_end_Message("ucm_test_lookup", tool_args, res)
+        return res
 
     return router

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from ucm_mcp.db.connection import get_connection
 from ucm_mcp.identity import get_db_id
 from ucm_mcp.tools.project_tools import resolve_project
+from ucm_mcp.web_socket_manager import send_tool_start_Message, send_tool_end_Message
 
 
 def _normalize_path(p: str) -> str:
@@ -25,11 +26,15 @@ Parameters:
 'root_path' (Optional)"""
     )
     async def ucm_find_calls(symbol_name: str, direction: str = "both", root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
+        tool_args = {"symbol_name": symbol_name, "direction": direction, "root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_find_calls", tool_args)
         try:
             project_path = resolve_project(root_path)
             db_id = get_db_id(project_path)
         except ValueError as e:
-            return str(e) if format_md else {"error": str(e)}
+            res = str(e) if format_md else {"error": str(e)}
+            await send_tool_end_Message("ucm_find_calls", tool_args, res)
+            return res
             
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
@@ -70,8 +75,11 @@ Parameters:
                     lines.append("- (None found)")
                 for r in res["callees"]:
                     lines.append(f"- `{r['callee_name']}` ({r['path']}:{r['line']})")
-            return "\n".join(lines)
+            md_res = "\n".join(lines)
+            await send_tool_end_Message("ucm_find_calls", tool_args, md_res)
+            return md_res
             
+        await send_tool_end_Message("ucm_find_calls", tool_args, res)
         return res
         
     @router.get("/dependencies")
@@ -81,12 +89,16 @@ Parameters:
 'file_path'
 'root_path' (Optional)"""
     )
-    def ucm_dependencies(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+    async def ucm_dependencies(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+        tool_args = {"file_path": file_path, "root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_dependencies", tool_args)
         try:
             project_path = resolve_project(root_path)
             db_id = get_db_id(project_path)
         except ValueError as e:
-            return str(e) if format_md else [{"error": str(e)}]
+            res = str(e) if format_md else [{"error": str(e)}]
+            await send_tool_end_Message("ucm_dependencies", tool_args, res)
+            return res
             
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
@@ -104,15 +116,21 @@ Parameters:
         
         if format_md:
             if not rows:
-                return f"No imports found for '{file_path}'."
+                res = f"No imports found for '{file_path}'."
+                await send_tool_end_Message("ucm_dependencies", tool_args, res)
+                return res
             lines = [f"## Dependencies of '{file_path}':"]
             for r in rows:
                 alias = f" as {r['alias']}" if r["alias"] else ""
                 dyn = " (dynamic)" if r["is_dynamic"] else ""
                 lines.append(f"- `{r['to_module']}`{alias}{dyn}")
-            return "\n".join(lines)
+            res = "\n".join(lines)
+            await send_tool_end_Message("ucm_dependencies", tool_args, res)
+            return res
             
-        return rows
+        res = rows
+        await send_tool_end_Message("ucm_dependencies", tool_args, res)
+        return res
         
     @router.get("/inheritance")
     @mcp.tool(description=
@@ -121,12 +139,16 @@ Parameters:
 'symbol_name'
 'root_path' (Optional)"""
     )
-    def ucm_inheritance(symbol_name: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
+    async def ucm_inheritance(symbol_name: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, Dict[str, Any]]:
+        tool_args = {"symbol_name": symbol_name, "root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_inheritance", tool_args)
         try:
             project_path = resolve_project(root_path)
             db_id = get_db_id(project_path)
         except ValueError as e:
-            return str(e) if format_md else {"error": str(e)}
+            res = str(e) if format_md else {"error": str(e)}
+            await send_tool_end_Message("ucm_inheritance", tool_args, res)
+            return res
             
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
@@ -153,7 +175,9 @@ Parameters:
         
         if format_md:
             if not parents and not children:
-                return f"No inheritance relationships found for '{symbol_name}'."
+                md_res = f"No inheritance relationships found for '{symbol_name}'."
+                await send_tool_end_Message("ucm_inheritance", tool_args, md_res)
+                return md_res
             lines = [f"## Inheritance for '{symbol_name}':"]
             if parents:
                 lines.append("### Parents:")
@@ -163,8 +187,11 @@ Parameters:
                 lines.append("### Children:")
                 for c in children:
                     lines.append(f"- `{c['child_name']}` {c['kind']} this ({c['path']})")
-            return "\n".join(lines)
+            md_res = "\n".join(lines)
+            await send_tool_end_Message("ucm_inheritance", tool_args, md_res)
+            return md_res
             
+        await send_tool_end_Message("ucm_inheritance", tool_args, res)
         return res
 
     @router.get("/dependents")
@@ -174,12 +201,16 @@ Parameters:
 'file_path'
 'root_path' (Optional)"""
     )
-    def ucm_dependents(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+    async def ucm_dependents(file_path: str, root_path: Optional[str] = None, format_md: bool = True) -> Union[str, List[Dict[str, Any]]]:
+        tool_args = {"file_path": file_path, "root_path": root_path, "format_md": format_md}
+        await send_tool_start_Message("ucm_dependents", tool_args)
         try:
             project_path = resolve_project(root_path)
             db_id = get_db_id(project_path)
         except ValueError as e:
-            return str(e) if format_md else [{"error": str(e)}]
+            res = str(e) if format_md else [{"error": str(e)}]
+            await send_tool_end_Message("ucm_dependents", tool_args, res)
+            return res
             
         conn = get_connection(db_id, data_dir)
         cur = conn.cursor()
@@ -198,13 +229,19 @@ Parameters:
         
         if format_md:
             if not rows:
-                return f"No dependents found for '{file_path}' (no files seem to import it)."
+                res = f"No dependents found for '{file_path}' (no files seem to import it)."
+                await send_tool_end_Message("ucm_dependents", tool_args, res)
+                return res
             lines = [f"## Dependents of '{file_path}':"]
             for r in rows:
                 dyn = " (dynamic)" if r["is_dynamic"] else ""
                 lines.append(f"- `{r['path']}`{dyn}")
-            return "\n".join(lines)
+            res = "\n".join(lines)
+            await send_tool_end_Message("ucm_dependents", tool_args, res)
+            return res
             
-        return rows
+        res = rows
+        await send_tool_end_Message("ucm_dependents", tool_args, res)
+        return res
 
     return router
